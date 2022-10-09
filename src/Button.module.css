@@ -1,0 +1,27 @@
+.button {
+  position: relative;
+  font-size: 12px;
+  padding: 4px;
+  border-radius: 4px;
+  overflow: hidden;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  color: white;
+  background-color: transparent;
+  border: 1px solid white;
+  cursor: pointer;
+  white-space: nowrap;
+  margin-right: 4px;
+  margin-top: 4px;
+}
+
+.button:hover {
+  color: cyan;
+  border: 1px solid cyan;
+}
+
+.button:active {
+  color: cyan;
+  border: 1px solid cyan;
+}
