@@ -115,6 +115,12 @@ function App() {
     setEstimatedFPS(1 / (end - start));
   }
 
+  async function nextFrameFPS() {
+    if (userFPS === null) return;
+    video.current!.currentTime = video.current!.currentTime + 1 / userFPS;
+    await video.current!.pause();
+  }
+
   function playPause() {
     if (video.current?.paused) {
       video.current?.play();
@@ -227,7 +233,7 @@ function App() {
               }}
             />
           </div>
-          <div className={styles.controls}>
+          <div className={styles.sidebar}>
             <video
               autoPlay
               className={styles.video}
@@ -246,40 +252,44 @@ function App() {
                 ]);
               }}
             />
-            <Button onClick={() => playPause()}>Play/Pause (space)</Button>
-            <Button onClick={() => nextFrame()}>Next frame (q)</Button>
-            <Button onClick={() => log()}>Log entry (w)</Button>
-            <Button onClick={() => promptFPS()}>Set FPS (f)</Button>
-            <CSVLink
-              data={csvData}
-              className={buttonStyles.button}
-              filename={`${videoName}.csv`}
-            >
-              Download CSV
-            </CSVLink>
-            <div className={styles.info}>
-              Dimensions {videoNativeSize[0]}x{videoNativeSize[1]}
-            </div>
-            <div className={styles.info}>Duration {duration.toFixed(4)}s</div>
-            <div className={styles.info}>Current time {currentTime}s</div>
-            {typeof userFPS === "number" ? (
-              <div className={styles.info}>FPS {userFPS.toFixed(4)}s</div>
-            ) : typeof estimatedFPS === "number" ? (
+            <div className={styles.buttonsAndInfo}>
+              <Button onClick={() => playPause()}>Play/Pause (space)</Button>
+              <Button onClick={() => nextFrame()}>Next frame (q)</Button>
+              <Button onClick={() => log()}>Log entry (w)</Button>
+              <Button onClick={() => promptFPS()}>Set FPS (f)</Button>
+              <CSVLink
+                data={csvData}
+                className={buttonStyles.button}
+                filename={`${videoName}.csv`}
+              >
+                Download CSV
+              </CSVLink>
               <div className={styles.info}>
-                ⚠️ FPS {estimatedFPS.toFixed(4)}s (estimated)
+                Dimensions {videoNativeSize[0]}x{videoNativeSize[1]}
               </div>
-            ) : (
-              <div className={styles.info}>⚠️ FPS unknown</div>
-            )}
-            {typeof frame === "number" ? (
-              <div className={styles.info}>Frame {Math.round(frame)}</div>
-            ) : null}
-            <div className={styles.info}>Box {printCoords(coords)}</div>
-            {Object.keys(entries).map((key) => (
-              <div key={key} className={styles.entry}>
-                {key},{printCoords(entries[Number(key)])}
-              </div>
-            ))}
+              <div className={styles.info}>Duration {duration.toFixed(4)}s</div>
+              <div className={styles.info}>Current time {currentTime}s</div>
+              {typeof userFPS === "number" ? (
+                <div className={styles.info}>FPS {userFPS.toFixed(4)}s</div>
+              ) : typeof estimatedFPS === "number" ? (
+                <div className={styles.info}>
+                  ⚠️ FPS {estimatedFPS.toFixed(4)}s (estimated)
+                </div>
+              ) : (
+                <div className={styles.info}>⚠️ FPS unknown</div>
+              )}
+              {typeof frame === "number" ? (
+                <div className={styles.info}>Frame {Math.round(frame)}</div>
+              ) : null}
+              <div className={styles.info}>Box {printCoords(coords)}</div>
+            </div>
+            <div className={styles.entries}>
+              {Object.keys(entries).map((key) => (
+                <div key={key} className={styles.entry}>
+                  {key},{printCoords(entries[Number(key)])}
+                </div>
+              ))}
+            </div>
           </div>
         </div>
       )}
