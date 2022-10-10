@@ -26,8 +26,7 @@ function App() {
   const [currentTime, setCurrentTime] = useState(0);
   const [duration, setDuration] = useState(0);
   const [videoName, setVideoName] = useState("");
-  const [estimatedFPS, setEstimatedFPS] = useState<number | null>(null);
-  const [userFPS, setUserFPS] = useState<number | null>(null);
+  const [fps, setFPS] = useState<number | null>(null);
   const [videoNativeSize, setVideoNativeSize] = useState<[number, number]>([
     0, 0,
   ]);
@@ -49,17 +48,7 @@ function App() {
   const canvasWrapper = useRef<HTMLDivElement>(null);
   const box = useRef<HTMLDivElement>(null);
 
-  const fps =
-    typeof userFPS === "number"
-      ? userFPS
-      : typeof estimatedFPS === "number"
-      ? estimatedFPS
-      : null;
-
-  const frame =
-    typeof fps === "number"
-      ? Math.floor((video.current?.currentTime || 0) * fps)
-      : null;
+  const frame = typeof fps === "number" ? Math.floor(currentTime * fps) : null;
 
   const coords: Coords = useMemo(() => {
     const scaleFactor = canvasRect.width / videoNativeSize[0];
@@ -102,29 +91,15 @@ function App() {
     ];
   });
 
-  // async function nextFrame() {
-  //   const start = video.current?.currentTime || 0;
-  //   try {
-  //     // @ts-expect-error Firefox only API
-  //     await video.current?.seekToNextFrame();
-  //   } catch (e) {}
-  //   // Hack to update current time after seek
-  //   await video.current?.play();
-  //   await video.current?.pause();
-  //   // Rough estimate FPS
-  //   const end = video.current?.currentTime || 0;
-  //   setEstimatedFPS(1 / (end - start));
-  // }
-
   async function nextFrame() {
-    if (userFPS === null) return;
-    video.current!.currentTime = video.current!.currentTime + 1 / userFPS;
+    if (fps === null) return;
+    video.current!.currentTime = video.current!.currentTime + 1 / fps;
     await video.current!.pause();
   }
 
   async function previousFrame() {
-    if (userFPS === null) return;
-    video.current!.currentTime = video.current!.currentTime - 1 / userFPS;
+    if (fps === null) return;
+    video.current!.currentTime = video.current!.currentTime - 1 / fps;
     await video.current!.pause();
   }
 
@@ -138,7 +113,7 @@ function App() {
 
   function promptFPS() {
     const value = Number(window.prompt("FPS", "30")) || 0;
-    setUserFPS(value);
+    setFPS(value);
   }
 
   function log() {
@@ -146,8 +121,23 @@ function App() {
     setEntries((prev) => ({ ...prev, [currentFrame]: coords }));
   }
 
-  function updateCanvas() {
+  function removeEntry(key: number) {
+    setEntries((prev) => {
+      const next = { ...prev };
+      delete next[key];
+      return next;
+    });
+  }
+
+  function seek(frameNumber: number) {
+    if (!video.current) return;
+    // Not perfectly frame accurate
+    video.current.currentTime = frameNumber / (fps || 0);
+  }
+
+  function tick(now: DOMHighResTimeStamp, metadata: VideoFrameMetadata) {
     if (!canvas.current || !video.current) return;
+
     const ctx = canvas.current.getContext("2d");
     canvas.current.width = video.current.videoWidth;
     canvas.current.height = video.current.videoHeight;
@@ -158,7 +148,10 @@ function App() {
       canvas.current.width,
       canvas.current.height
     );
-    requestAnimationFrame(updateCanvas);
+
+    setCurrentTime(metadata.mediaTime);
+
+    video.current?.requestVideoFrameCallback?.(tick);
   }
 
   useKey("KeyQ", () => previousFrame());
@@ -199,16 +192,12 @@ function App() {
 
   useEffect(() => {
     if (!file) return;
-
     promptFPS();
   }, [file]);
 
+  // Init
   useEffect(() => {
-    if (!file || userFPS === null) return;
-
-    // videoCanvas(video.current, {
-    //   canvas: canvas.current,
-    // });
+    if (!file || fps === null) return;
 
     interact(box.current!)
       .draggable({
@@ -230,8 +219,8 @@ function App() {
         },
       });
 
-    requestAnimationFrame(updateCanvas);
-  }, [file, userFPS]);
+    video.current?.requestVideoFrameCallback?.(tick);
+  }, [file, fps]);
 
   return (
     <div className={styles.app}>
@@ -272,10 +261,8 @@ function App() {
               muted
               src={file}
               ref={video}
-              onTimeUpdate={(e) => {
-                setCurrentTime(e.currentTarget.currentTime);
-              }}
               onFocus={(e) => {
+                // Disable keyboard shortcuts on video element
                 e.currentTarget.blur();
               }}
               onLoadedMetadata={(e) => {
@@ -304,14 +291,8 @@ function App() {
               </div>
               <div className={styles.info}>Duration {duration.toFixed(4)}s</div>
               <div className={styles.info}>Current time {currentTime}s</div>
-              {typeof userFPS === "number" ? (
-                <div className={styles.info}>FPS {userFPS.toFixed(4)}s</div>
-              ) : typeof estimatedFPS === "number" ? (
-                <div className={styles.info}>
-                  ⚠️ FPS {estimatedFPS.toFixed(4)}s (estimated)
-                </div>
-              ) : (
-                <div className={styles.info}>⚠️ FPS unknown</div>
+              {typeof fps === "number" && (
+                <div className={styles.info}>FPS {fps.toFixed(4)}s</div>
               )}
               {typeof frame === "number" ? (
                 <div className={styles.info}>Frame {frame}</div>
@@ -320,8 +301,21 @@ function App() {
             </div>
             <div className={styles.entries}>
               {Object.keys(entries).map((key) => (
-                <div key={key} className={styles.entry}>
-                  {key},{printCoords(entries[Number(key)])}
+                <div
+                  key={key}
+                  className={styles.entry}
+                  onClick={() => seek(Number(key))}
+                >
+                  {key},{printCoords(entries[Number(key)])}{" "}
+                  <a
+                    className={styles.trashButton}
+                    onClick={(e) => {
+                      removeEntry(Number(key));
+                      e.stopPropagation();
+                    }}
+                  >
+                    ❌
+                  </a>
                 </div>
               ))}
             </div>
