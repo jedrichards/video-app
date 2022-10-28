@@ -18,10 +18,10 @@ import { CSVLink } from "react-csv";
 
 type Box = { x: number; y: number; width: number; height: number };
 type Coords = { x1: number; y1: number; x2: number; y2: number };
-type Entries = Record<number, Coords>;
+type Entries = { frame: number; coords: Coords; id: string }[];
 
 function App() {
-  const [entries, setEntries] = useState<Entries>({});
+  const [entries, setEntries] = useState<Entries>([]);
   const [file, setFile] = useState<string | null>(null);
   const [currentTime, setCurrentTime] = useState(0);
   const [duration, setDuration] = useState(0);
@@ -80,16 +80,18 @@ function App() {
     return { x1, y1, x2, y2 };
   }, [boxRect, videoNativeSize, canvasRect]);
 
-  const csvData = Object.keys(entries).map((key) => {
-    const frame = Number(key);
-    return [
-      frame,
-      entries[frame].x1,
-      entries[frame].y1,
-      entries[frame].x2,
-      entries[frame].y2,
-    ];
-  });
+  const csvData = [
+    ["Frame", "top_left_x", "top_left_y", "bottom_right_x", "bottom_right_y"],
+    ...entries.map((entry) => {
+      return [
+        entry.frame,
+        entry.coords.x1,
+        entry.coords.y1,
+        entry.coords.x2,
+        entry.coords.y2,
+      ];
+    }),
+  ];
 
   async function nextFrame() {
     if (fps === null) return;
@@ -118,14 +120,15 @@ function App() {
 
   function log() {
     const currentFrame = frame || 0;
-    setEntries((prev) => ({ ...prev, [currentFrame]: coords }));
+    setEntries((prev) => [
+      ...prev,
+      { frame: currentFrame, coords, id: crypto.randomUUID() },
+    ]);
   }
 
-  function removeEntry(key: number) {
+  function removeEntry(id: string) {
     setEntries((prev) => {
-      const next = { ...prev };
-      delete next[key];
-      return next;
+      return prev.filter((entry) => entry.id !== id);
     });
   }
 
@@ -227,6 +230,7 @@ function App() {
       {!file && (
         <div className={styles.input}>
           <input
+            title="Select video"
             type="file"
             onChange={(e) => {
               const file = e.target.files?.[0] || null;
@@ -300,17 +304,17 @@ function App() {
               <div className={styles.info}>Box {printCoords(coords)}</div>
             </div>
             <div className={styles.entries}>
-              {Object.keys(entries).map((key) => (
+              {entries.map((entry) => (
                 <div
-                  key={key}
+                  key={`${entry.frame}-${printCoords(entry.coords)}`}
                   className={styles.entry}
-                  onClick={() => seek(Number(key))}
+                  onClick={() => seek(entry.frame)}
                 >
-                  {key},{printCoords(entries[Number(key)])}{" "}
+                  F{entry.frame} [{printCoords(entry.coords)}]{" "}
                   <a
                     className={styles.trashButton}
                     onClick={(e) => {
-                      removeEntry(Number(key));
+                      removeEntry(entry.id);
                       e.stopPropagation();
                     }}
                   >
