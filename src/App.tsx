@@ -81,7 +81,7 @@ function App() {
   }, [boxRect, videoNativeSize, canvasRect]);
 
   const csvData = [
-    ["Frame", "top_left_x", "top_left_y", "bottom_right_x", "bottom_right_y"],
+    ["frame", "top_left_x", "top_left_y", "bottom_right_x", "bottom_right_y"],
     ...entries.map((entry) => {
       return [
         entry.frame,
