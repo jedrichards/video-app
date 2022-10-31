@@ -48,7 +48,7 @@ function App() {
   const canvasWrapper = useRef<HTMLDivElement>(null);
   const box = useRef<HTMLDivElement>(null);
 
-  const frame = typeof fps === "number" ? Math.floor(currentTime * fps) : null;
+  const frame = typeof fps === "number" ? Math.round(currentTime * fps) : null;
 
   const coords: Coords = useMemo(() => {
     const scaleFactor = canvasRect.width / videoNativeSize[0];
