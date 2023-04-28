@@ -138,7 +138,10 @@ function App() {
     video.current.currentTime = frameNumber / (fps || 0);
   }
 
-  function tick(now: DOMHighResTimeStamp, metadata: VideoFrameMetadata) {
+  function tick(
+    now: DOMHighResTimeStamp,
+    metadata: VideoFrameCallbackMetadata
+  ) {
     if (!canvas.current || !video.current) return;
 
     const ctx = canvas.current.getContext("2d");
@@ -225,6 +228,11 @@ function App() {
     video.current?.requestVideoFrameCallback?.(tick);
   }, [file, fps]);
 
+  useEffect(() => {
+    // Lil' hack because the first call to next frame doesn't do anything
+    if (video.current) nextFrame();
+  }, [video.current]);
+
   return (
     <div className={styles.app}>
       {!file && (
@@ -259,7 +267,6 @@ function App() {
           </div>
           <div className={styles.sidebar}>
             <video
-              autoPlay
               className={styles.video}
               controls
               muted
