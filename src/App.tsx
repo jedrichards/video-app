@@ -1,11 +1,4 @@
-import {
-  ReactEventHandler,
-  SyntheticEvent,
-  useEffect,
-  useMemo,
-  useRef,
-  useState,
-} from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import styles from "./App.module.css";
 import buttonStyles from "./Button.module.css";
 import { Button } from "./Button";
@@ -15,10 +8,16 @@ import useEvent from "@react-hook/event";
 import interact from "interactjs";
 // @ts-expect-error untyped module
 import { CSVLink } from "react-csv";
+import { createFFmpeg } from "@ffmpeg/ffmpeg";
 
 type Box = { x: number; y: number; width: number; height: number };
 type Coords = { x1: number; y1: number; x2: number; y2: number };
 type Entries = { frame: number; coords: Coords; id: string }[];
+
+const ffmpeg = createFFmpeg({
+  mainName: "main",
+  corePath: "https://unpkg.com/@ffmpeg/core-st@latest/dist/ffmpeg-core.js",
+});
 
 function App() {
   const [entries, setEntries] = useState<Entries>([]);
@@ -48,7 +47,8 @@ function App() {
   const canvasWrapper = useRef<HTMLDivElement>(null);
   const box = useRef<HTMLDivElement>(null);
 
-  const frame = typeof fps === "number" ? Math.round(currentTime * fps) : null;
+  const frame =
+    typeof fps === "number" ? Math.round(currentTime * fps) - 1 : null;
 
   const coords: Coords = useMemo(() => {
     const scaleFactor = canvasRect.width / videoNativeSize[0];
@@ -196,11 +196,6 @@ function App() {
     }));
   });
 
-  useEffect(() => {
-    if (!file) return;
-    promptFPS();
-  }, [file]);
-
   // Init
   useEffect(() => {
     if (!file || fps === null) return;
@@ -233,6 +228,29 @@ function App() {
     if (video.current) nextFrame();
   }, [video.current]);
 
+  useEffect(() => {
+    async function probeFPS() {
+      if (!file || !videoName) return;
+
+      ffmpeg.setLogger((params) => {
+        const match = params.message.match(/(\d+) fps/);
+        if (match && match[1]) {
+          const maybeFps = Number(match[1]);
+          if (!isNaN(maybeFps)) setFPS(maybeFps);
+        }
+      });
+
+      const res = await fetch(file);
+      const buffer = await res.arrayBuffer();
+      await ffmpeg.load();
+      ffmpeg.FS("writeFile", videoName, new Uint8Array(buffer));
+      await ffmpeg.run("-i", videoName);
+      ffmpeg.FS("unlink", videoName);
+    }
+
+    probeFPS();
+  }, [file, videoName]);
+
   return (
     <div className={styles.app}>
       {!file && (
@@ -250,7 +268,16 @@ function App() {
         </div>
       )}
 
-      {file && (
+      {file && fps === null && (
+        <div className={styles.fps}>
+          <div>Probing fps...</div>
+          <div>
+            <a onClick={() => promptFPS()}>Click here to set manually</a>
+          </div>
+        </div>
+      )}
+
+      {file && fps && (
         <div className={styles.editor}>
           <div className={styles.canvasWrapper} ref={canvasWrapper}>
             <canvas className={styles.canvas} ref={canvas} />
