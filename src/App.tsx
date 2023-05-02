@@ -47,8 +47,7 @@ function App() {
   const canvasWrapper = useRef<HTMLDivElement>(null);
   const box = useRef<HTMLDivElement>(null);
 
-  const frame =
-    typeof fps === "number" ? Math.round(currentTime * fps) - 1 : null;
+  const frame = typeof fps === "number" ? Math.round(currentTime * fps) : 1;
 
   const coords: Coords = useMemo(() => {
     const scaleFactor = canvasRect.width / videoNativeSize[0];
@@ -95,13 +94,13 @@ function App() {
 
   async function nextFrame() {
     if (fps === null) return;
-    video.current!.currentTime = video.current!.currentTime + 1 / fps;
+    video.current!.currentTime = (frame + 1) * (1 / fps);
     await video.current!.pause();
   }
 
   async function previousFrame() {
     if (fps === null) return;
-    video.current!.currentTime = video.current!.currentTime - 1 / fps;
+    video.current!.currentTime = Math.max(0, (frame - 1) * (1 / fps));
     await video.current!.pause();
   }
 
@@ -224,11 +223,6 @@ function App() {
   }, [file, fps]);
 
   useEffect(() => {
-    // Lil' hack because the first call to next frame doesn't do anything
-    if (video.current) nextFrame();
-  }, [video.current]);
-
-  useEffect(() => {
     async function probeFPS() {
       if (!file || !videoName) return;
 
@@ -334,7 +328,7 @@ function App() {
                 <div className={styles.info}>FPS {fps.toFixed(4)}s</div>
               )}
               {typeof frame === "number" ? (
-                <div className={styles.info}>Frame {frame}</div>
+                <div className={styles.info}>Frame {frame - 1}</div>
               ) : null}
               <div className={styles.info}>Box {printCoords(coords)}</div>
             </div>
