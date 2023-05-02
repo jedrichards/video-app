@@ -94,14 +94,12 @@ function App() {
 
   async function nextFrame() {
     if (fps === null) return;
-    video.current!.currentTime = (frame + 1) * (1 / fps);
-    await video.current!.pause();
+    video.current!.currentTime = video.current!.currentTime + 1 / fps;
   }
 
   async function previousFrame() {
     if (fps === null) return;
-    video.current!.currentTime = Math.max(0, (frame - 1) * (1 / fps));
-    await video.current!.pause();
+    video.current!.currentTime = video.current!.currentTime - 1 / fps;
   }
 
   function playPause() {
