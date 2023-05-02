@@ -233,9 +233,10 @@ function App() {
       if (!file || !videoName) return;
 
       ffmpeg.setLogger((params) => {
-        const match = params.message.match(/(\d+) fps/);
-        if (match && match[1]) {
-          const maybeFps = Number(match[1]);
+        const match = params.message.match(/(\d+.)?(\d+) fps/);
+        if (match && match[0]) {
+          const fpsString = match[0];
+          const maybeFps = Number(fpsString.replace(" fps", ""));
           if (!isNaN(maybeFps)) setFPS(maybeFps);
         }
       });
