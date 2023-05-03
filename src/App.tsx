@@ -22,10 +22,11 @@ const ffmpeg = createFFmpeg({
 function App() {
   const [entries, setEntries] = useState<Entries>([]);
   const [file, setFile] = useState<string | null>(null);
-  const [currentTime, setCurrentTime] = useState(0);
+  const [currentTimeRaw, setCurrentTimeRaw] = useState(0);
   const [duration, setDuration] = useState(0);
   const [videoName, setVideoName] = useState("");
   const [fps, setFPS] = useState<number | null>(null);
+  const offset = useRef<number | undefined>();
   const [videoNativeSize, setVideoNativeSize] = useState<[number, number]>([
     0, 0,
   ]);
@@ -47,7 +48,11 @@ function App() {
   const canvasWrapper = useRef<HTMLDivElement>(null);
   const box = useRef<HTMLDivElement>(null);
 
-  const frame = typeof fps === "number" ? Math.round(currentTime * fps) : 1;
+  const currentTime = useMemo(
+    () => currentTimeRaw - (offset.current || 0),
+    [currentTimeRaw]
+  );
+  const frame = typeof fps === "number" ? Math.round(currentTime * fps) : 0;
 
   const coords: Coords = useMemo(() => {
     const scaleFactor = canvasRect.width / videoNativeSize[0];
@@ -95,11 +100,13 @@ function App() {
   async function nextFrame() {
     if (fps === null) return;
     video.current!.currentTime = video.current!.currentTime + 1 / fps;
+    await video.current?.pause();
   }
 
   async function previousFrame() {
     if (fps === null) return;
     video.current!.currentTime = video.current!.currentTime - 1 / fps;
+    await video.current?.pause();
   }
 
   function playPause() {
@@ -152,7 +159,11 @@ function App() {
       canvas.current.height
     );
 
-    setCurrentTime(metadata.mediaTime);
+    if (offset.current === undefined) {
+      offset.current = metadata.mediaTime;
+    }
+
+    setCurrentTimeRaw(metadata.mediaTime);
 
     video.current?.requestVideoFrameCallback?.(tick);
   }
@@ -326,7 +337,7 @@ function App() {
                 <div className={styles.info}>FPS {fps.toFixed(4)}s</div>
               )}
               {typeof frame === "number" ? (
-                <div className={styles.info}>Frame {frame - 1}</div>
+                <div className={styles.info}>Frame {frame}</div>
               ) : null}
               <div className={styles.info}>Box {printCoords(coords)}</div>
             </div>
