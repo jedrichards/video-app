@@ -168,11 +168,23 @@ function App() {
     video.current?.requestVideoFrameCallback?.(tick);
   }
 
+  function nudgeBox(dx: number, dy: number) {
+    setBoxRect((prev) => ({
+      ...prev,
+      x: prev.x + dx,
+      y: prev.y + dy,
+    }));
+  }
+
   useKey("KeyQ", () => previousFrame());
   useKey("KeyW", () => nextFrame());
   useKey("KeyE", () => log());
   useKey("KeyF", () => promptFPS());
   useKey("Space", () => playPause());
+  useKey("ArrowUp", () => nudgeBox(0, -1));
+  useKey("ArrowDown", () => nudgeBox(0, 1));
+  useKey("ArrowLeft", () => nudgeBox(-1, 0));
+  useKey("ArrowRight", () => nudgeBox(1, 0));
 
   useResizeObserver(box.current, (entry) =>
     setBoxRect((prev) => ({

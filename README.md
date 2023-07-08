@@ -15,6 +15,8 @@ yarn dev
 
 App auto-deploys on push to `main` branch.
 
+> Note that app needs to be build locally before push.
+
 ```
 yarn build
 # Commit and push
